@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.1.5/dist/jszip.min.js"></script>
+    <script type="text/javascript">
+
+        function dataURItoBlob(dataURI) {
+            // convert base64/URLEncoded data component to raw binary data held in a string
+            var byteString;
+            if (dataURI.split(',')[0].indexOf('base64') >= 0)
+                byteString = atob(dataURI.split(',')[1]);
+            else
+                byteString = unescape(dataURI.split(',')[1]);
+
+            // separate out the mime component
+            var mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+
+            // write the bytes of the string to a typed array
+            var ia = new Uint8Array(byteString.length);
+            for (var i = 0; i < byteString.length; i++) {
+                ia[i] = byteString.charCodeAt(i);
+            }
+
+            return new Blob([ia], {type:mimeString});
+        }
+
+        //jszip-utils code
+        !function(a){"object"==typeof exports?module.exports=a():"function"==typeof define&&define.amd?define(a):"undefined"!=typeof window?window.JSZipUtils=a():"undefined"!=typeof global?global.JSZipUtils=a():"undefined"!=typeof self&&(self.JSZipUtils=a())}(function(){return function a(b,c,d){function e(g,h){if(!c[g]){if(!b[g]){var i="function"==typeof require&&require;if(!h&&i)return i(g,!0);if(f)return f(g,!0);throw new Error("Cannot find module '"+g+"'")}var j=c[g]={exports:{}};b[g][0].call(j.exports,function(a){var c=b[g][1][a];return e(c?c:a)},j,j.exports,a,b,c,d)}return c[g].exports}for(var f="function"==typeof require&&require,g=0;g<d.length;g++)e(d[g]);return e}({1:[function(a,b){"use strict";function c(){try{return new window.XMLHttpRequest}catch(a){}}function d(){try{return new window.ActiveXObject("Microsoft.XMLHTTP")}catch(a){}}var e={};e._getBinaryFromXHR=function(a){return a.response||a.responseText};var f=window.ActiveXObject?function(){return c()||d()}:c;e.getBinaryContent=function(a,b){try{var c=f();c.open("GET",a,!0),"responseType"in c&&(c.responseType="arraybuffer"),c.overrideMimeType&&c.overrideMimeType("text/plain; charset=x-user-defined"),c.onreadystatechange=function(){var d,f;if(4===c.readyState)if(200===c.status||0===c.status){d=null,f=null;try{d=e._getBinaryFromXHR(c)}catch(g){f=new Error(g)}b(f,d)}else b(new Error("Ajax error for "+a+" : "+this.status+" "+this.statusText),null)},c.send()}catch(d){b(new Error(d),null)}},b.exports=e},{}]},{},[1])(1)});
+
+        function fillImg(image){
+
+            var canvas = document.getElementById("canvas"),
+                ctx = canvas.getContext("2d");
+
+            document.getElementById('canvas').setAttribute('width', image.naturalWidth);
+            document.getElementById('canvas').setAttribute('height', image.naturalHeight);
+
+            ctx.drawImage(image,0,0);
+
+            var imgd = ctx.getImageData(0, 0, image.naturalWidth, image.naturalHeight),
+                pix = imgd.data,
+                uniqueColor = [0,0,0];
+
+            for (var i = 0, n = pix.length; i <n; i += 4) {
+                pix[i] = uniqueColor[0];   // Red component
+                pix[i+1] = uniqueColor[1]; // Blue component
+                pix[i+2] = uniqueColor[2]; // Green component
+                //pix[i+3] is the transparency.
+            }
+
+            ctx.putImageData(imgd, 0, 0);
+
+            var generateZip = () => {
+                var zip = new JSZip();
+                //zip.file("img.png", canvas.toDataURL("image/png"));
+
+                JSZipUtils.getBinaryContent(dataURItoBlob(canvas.toDataURL("image/png")), function (err, data) {
+                    zip.file('img.png', data, {binary:true});
+                    console.log(data);
+                });
+
+                zip.generateAsync({type:"base64"}).then(function (base64) {
+                    window.location = "data:application/zip;base64," + base64;
+                });
+            };
+
+            var finalImg = document.createElement('img');
+            finalImg.src = canvas.toDataURL("image/png");
+
+            return finalImg;
+        }
+
+        window.addEventListener("load", () => {
+
+            var input = document.querySelector('input');
+            var preview = document.querySelector('.preview');
+
+            input.addEventListener('change', updateImageDisplay);
+
+            function updateImageDisplay() {
+
+                while(preview.firstChild) {
+                    preview.removeChild(preview.firstChild);
+                }
+
+                var curFiles = input.files;
+
+                for(var i = 0; i < curFiles.length; i++) {
+
+                    var canvas = document.getElementById("canvas"),
+                        ctx = canvas.getContext("2d");
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                    let image = document.createElement('img');
+                    image.src = window.URL.createObjectURL(curFiles[i]);
+
+                    image.onload = () => { preview.appendChild(fillImg(image)) };
+                }
+            }
+        });
+
+    </script>
+</head>
+<body>
+
+    <label for="pics">Make your choise:</label>
+    <input type="file" id="pics" name="pics" accept="image/png" multiple />
+
+    <!--
+    <h4>Original Image</h4>
+    <img id="testImage" src='b_8.png'/>
+    -->
+
+    <canvas id="canvas" style="display: none"></canvas>
+
+    <div class="preview"></div>
+
+    <!--
+    <h4>Modified Image copied to an image tag</h4>
+    <img id="imageData"/>
+    -->
+
+
+</body>
+</html>
